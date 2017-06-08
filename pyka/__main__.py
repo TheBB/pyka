@@ -1,5 +1,6 @@
 import click
 
+from pyka.codegen import CodeGen
 from pyka.parser import KaleidoscopeParser, KaleidoscopeSemantics
 
 
@@ -9,11 +10,21 @@ def main():
         parseinfo=True,
         semantics=KaleidoscopeSemantics()
     )
+    nodes = []
 
     while True:
         inp = input('> ')
-        ast = parser.parse(inp, 'toplevel')
-        print(ast)
+        last_node = parser.parse(inp, 'toplevel')
+        print(repr(last_node))
+
+        gen = CodeGen()
+        for node in nodes:
+            gen.generate(node)
+        func = gen.generate(last_node)
+
+        print(str(gen.module))
+
+        nodes.append(last_node)
 
 
 if __name__ == '__main__':
