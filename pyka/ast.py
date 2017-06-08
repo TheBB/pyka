@@ -43,7 +43,7 @@ class BinOp(ASTNode):
         self.rhs = rhs
 
     def __repr__(self):
-        return f'{{bop {self.op} {self.lhs} {self.rhs}}}'
+        return f'{{bop {self.op} {self.lhs!r} {self.rhs!r}}}'
 
     def codegen(self, gen, bld, loc):
         lhs = self.lhs.codegen(gen, bld, loc)
@@ -65,7 +65,7 @@ class Call(ASTNode):
         self.args = args
 
     def __repr__(self):
-        return f'{{call {self.func} {self.args}}}'
+        return f'{{call {self.func!r} {self.args!r}}}'
 
     def codegen(self, gen, bld, loc):
         callee = self.func.lookup(loc)
@@ -80,7 +80,9 @@ class Prototype(ASTNode):
         self.args = args
 
     def __repr__(self):
-        return f'{{prt {self.name or "??"} {self.args}}}'
+        if self.name:
+            return f'{{prt {self.name!r} {self.args!r}}}'
+        return f'{{prt {self.args!r}}}'
 
     def codegen(self, gen, mod, loc):
         type_ = ir.FunctionType(ir.DoubleType(), [ir.DoubleType() for _ in self.args])
@@ -99,15 +101,14 @@ class Definition(ASTNode):
         self.body = body
 
     def __repr__(self):
-        return f'{{def {self.prototype} {self.body}}}'
+        return f'{{def {self.prototype!r} {self.body!r}}}'
 
     def codegen(self, gen, mod, loc):
         func = self.prototype.codegen(gen, mod, loc)
         blk = func.append_basic_block('entry')
         bld = ir.IRBuilder(blk)
 
-        names = dict(loc)
-        names.update({arg.name: arg for arg in func.args})
+        names = dict(loc, **{arg.name: arg for arg in func.args})
         retval = self.body.codegen(gen, bld, names)
         bld.ret(retval)
         return func
@@ -119,4 +120,4 @@ class ExprWrapper(Definition):
         super(ExprWrapper, self).__init__(Prototype(None, []), body)
 
     def __repr__(self):
-        return f'{{wrp {self.body}}}'
+        return f'{{wrp {self.body!r}}}'
