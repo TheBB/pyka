@@ -96,6 +96,10 @@ class Prototype(ASTNode):
         return func
 
 
+def prototype(name, *args):
+    return Prototype(Symbol(name), [Symbol(arg) for arg in args])
+
+
 class Definition(ASTNode):
 
     def __init__(self, prototype, body):

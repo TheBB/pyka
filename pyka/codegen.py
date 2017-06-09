@@ -2,12 +2,14 @@ import ctypes as ct
 import llvmlite.ir as ir
 import llvmlite.binding as llvm
 
-from pyka.ast import Definition, Prototype
+from pyka.ast import Definition, Prototype, prototype, Symbol
+import pyka.runtime as runtime
 
 
 llvm.initialize()
 llvm.initialize_native_target()
 llvm.initialize_native_asmprinter()
+llvm.load_library_permanently('/lib/libm.so.6')
 
 
 class CodeGen:
@@ -20,7 +22,18 @@ class CodeGen:
         backing_mod = llvm.parse_assembly('')
         self.engine = llvm.create_mcjit_compiler(backing_mod, target_machine)
 
-        self._prototypes = {}
+        self._prototypes = {
+            'sin': prototype('sin', 'x'),
+            'cos': prototype('cos', 'x'),
+            'sqrt': prototype('sqrt', 'x'),
+        }
+        self._runtime = []
+
+        for func in runtime.__all__:
+            wrap = runtime.Wrap(getattr(runtime, func))
+            self._runtime.append(wrap)
+            llvm.add_symbol(str(wrap), wrap.addr)
+            self._prototypes[str(wrap)] = wrap.prototype
 
     def name(self):
         return '//anonymous'
