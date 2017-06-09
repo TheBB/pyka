@@ -12,24 +12,14 @@ def main():
         semantics=KaleidoscopeSemantics()
     )
     nodes = []
+    gen = CodeGen()
 
     while True:
         inp = input('> ')
-        last_node = parser.parse(inp, 'toplevel')
-        print(repr(last_node))
-
-        if isinstance(last_node, ExprWrapper):
-            gen = CodeGen()
-            for node in nodes:
-                gen.generate(node)
-            func = gen.generate(last_node)
-
-            print(str(gen.module))
-
-            gen.compile()
+        node = parser.parse(inp, 'toplevel')
+        func = gen.generate(node)
+        if isinstance(node, ExprWrapper):
             print(gen.run_wrapper(func.name))
-
-        nodes.append(last_node)
 
 
 if __name__ == '__main__':

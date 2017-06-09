@@ -2,7 +2,7 @@ import ctypes as ct
 import llvmlite.ir as ir
 import llvmlite.binding as llvm
 
-from pyka.ast import Definition
+from pyka.ast import Definition, Prototype
 
 
 llvm.initialize()
@@ -15,25 +15,35 @@ class CodeGen:
     def __init__(self):
         self.module = ir.Module(name='Kaleidoscope')
 
-        self._counter = -1
-        self._names = {}
+        target = llvm.Target.from_default_triple()
+        target_machine = target.create_target_machine()
+        backing_mod = llvm.parse_assembly('')
+        self.engine = llvm.create_mcjit_compiler(backing_mod, target_machine)
+
+        self._prototypes = {}
 
     def name(self):
-        self._counter += 1
-        return f'//anonymous_{self._counter}'
+        return '//anonymous'
 
     def generate(self, node):
-        return node.codegen(self, self.module, self._names)
-
-    def register(self, name, value):
-        self._names[str(name)] = value
+        if isinstance(node, Prototype):
+            self._prototypes[str(node)] = node
+        elif isinstance(node, Definition):
+            self._prototypes[str(node)] = node.prototype
+        val = node.codegen(self, self.module, {})
+        if isinstance(node, Definition):
+            self.compile()
+            self.module = ir.Module(name='Kaleidoscope')
+        return val
 
     def function(self, name):
         for func in self.module.functions:
-            if func.name == str(name):
+            if func.name == name:
                 return func
+        return self._prototypes[name].codegen(self, self.module, {})
 
     def compile(self):
+        print(str(self.module))
         refmod = llvm.parse_assembly(str(self.module))
         refmod.verify()
 
@@ -43,10 +53,6 @@ class CodeGen:
         pmb.populate(pm)
         pm.run(refmod)
 
-        target = llvm.Target.from_default_triple()
-        target_machine = target.create_target_machine()
-        backing_mod = llvm.parse_assembly('')
-        self.engine = llvm.create_mcjit_compiler(backing_mod, target_machine)
         self.engine.add_module(refmod)
         self.engine.finalize_object()
 

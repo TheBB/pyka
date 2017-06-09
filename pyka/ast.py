@@ -68,7 +68,7 @@ class Call(ASTNode):
         return f'{{call {self.func!r} {self.args!r}}}'
 
     def codegen(self, gen, bld, loc):
-        callee = self.func.lookup(loc)
+        callee = gen.function(str(self.func))
         args = [arg.codegen(gen, bld, loc) for arg in self.args]
         return bld.call(callee, args)
 
@@ -84,11 +84,13 @@ class Prototype(ASTNode):
             return f'{{prt {self.name!r} {self.args!r}}}'
         return f'{{prt {self.args!r}}}'
 
+    def __str__(self):
+        return str(self.name)
+
     def codegen(self, gen, mod, loc):
         type_ = ir.FunctionType(ir.DoubleType(), [ir.DoubleType() for _ in self.args])
         name = str(self.name or gen.name())
         func = ir.Function(mod, type_, name=name)
-        gen.register(name, func)
         for arg, name in zip(func.args, self.args):
             arg.name = str(name)
         return func
@@ -102,6 +104,9 @@ class Definition(ASTNode):
 
     def __repr__(self):
         return f'{{def {self.prototype!r} {self.body!r}}}'
+
+    def __str__(self):
+        return str(self.prototype)
 
     def codegen(self, gen, mod, loc):
         func = self.prototype.codegen(gen, mod, loc)
